@@ -1,0 +1,46 @@
+{
+  "name": "vault",
+  "version": "1.0.0",
+  "description": "A secure credentials manager",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy:prod": "eslint \"src/**\" --fix && webpack --mode=production && npm install -g ."
+  },
+  "keywords": [
+    "vault",
+    "encrypted",
+    "password",
+    "credentials",
+    "offline",
+    "manager"
+  ],
+  "author": "@thedev.ay",
+  "license": "MIT",
+  "homepage": "https://github.com/thedev-ay/vault",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/thedev-ay/vault.git"
+  },
+  "dependencies": {
+    "chalk": "^4.0.0",
+    "chalk-table": "^1.0.2",
+    "clear": "^0.1.0",
+    "commander": "^5.0.0",
+    "configstore": "^5.0.1",
+    "figlet": "^1.3.0",
+    "inquirer": "^7.1.0"
+  },
+  "bin": {
+    "vault": "./dist/main.js"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.9.0",
+    "babel-loader": "^8.1.0",
+    "eslint": "^6.8.0",
+    "terser-webpack-plugin": "^2.3.5",
+    "webpack": "^4.42.1",
+    "webpack-cli": "^3.3.11",
+    "webpack-node-externals": "^1.7.2"
+  }
+}
