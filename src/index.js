@@ -9,6 +9,8 @@ config.setBannerColor();
 
 display.banner();
 
+
+
 program
   .command("init")
   .option("-f, --file <vlt.enc file>", "The vlt.enc file generated after exporting vault")

@@ -8,7 +8,8 @@ const download = (key) => {
   const buffer = config.getVaultData();
   const uniqueId = Math.floor(new Date() / 1000);
   const filename = `vault_${uniqueId}.vlt.enc`;
-  const vaultDir = `${process.env.TMP}/Vault`;
+  const os = require("os");
+  const vaultDir = `${process.env.TMP || os.tmpdir()}/Vault`;
 
   if (!fs.existsSync(vaultDir)){
     fs.mkdirSync(vaultDir);

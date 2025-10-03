@@ -15,8 +15,7 @@ module.exports = {
       type: "confirm",
       name: "proceed",
       "default": false,
-      message: "Vault exists! Are you sure you want to proceed?",
-      filter: trimInput
+      message: "Vault exists! Are you sure you want to proceed?"
     }
   ],
   add: [
@@ -67,8 +66,7 @@ module.exports = {
       type: "confirm",
       name: "updatePassword",
       "default": false,
-      message: "Update password?",
-      filter: trimInput
+      message: "Update password?"
     },
     {
       type: "password",
@@ -83,8 +81,7 @@ module.exports = {
       type: "confirm",
       name: "updateNotes",
       "default": false,
-      message: "Update notes?",
-      filter: trimInput
+      message: "Update notes?"
     },
     {
       name: "notes",
