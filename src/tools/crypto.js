@@ -32,6 +32,16 @@ const deriveKey = (secret, salt, options) => crypto.scryptSync(
   options
 );
 
+const encryptWithKey = (buffer, key, salt) => {
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, {
+    authTagLength: AUTH_TAG_LENGTH
+  });
+  cipher.setAAD(CURRENT_MAGIC);
+  const ciphertext = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  return Buffer.concat([CURRENT_MAGIC, salt, iv, cipher.getAuthTag(), ciphertext]);
+};
+
 const startsWith = (encrypted, magic) => Buffer.from(encrypted)
   .subarray(0, magic.length)
   .equals(magic);
@@ -41,35 +51,63 @@ const needsUpgrade = (encrypted) => !startsWith(encrypted, CURRENT_MAGIC);
 
 const encrypt = (buffer, secret) => {
   const salt = crypto.randomBytes(SALT_LENGTH);
-  const iv = crypto.randomBytes(IV_LENGTH);
   const secretKey = deriveKey(secret, salt, VLT3_SCRYPT_OPTIONS);
-  const cipher = crypto.createCipheriv(ALGORITHM, secretKey, iv, {
-    authTagLength: AUTH_TAG_LENGTH
-  });
+  return encryptWithKey(buffer, secretKey, salt);
+};
 
-  cipher.setAAD(CURRENT_MAGIC);
-  const ciphertext = Buffer.concat([cipher.update(buffer), cipher.final()]);
-  const authTag = cipher.getAuthTag();
-
-  return Buffer.concat([CURRENT_MAGIC, salt, iv, authTag, ciphertext]);
+const decryptVersionedWithKey = (encrypted, magic, key) => {
+  if (encrypted.length < HEADER_LENGTH) throw new Error("Invalid encrypted vault.");
+  let offset = magic.length + SALT_LENGTH;
+  const iv = encrypted.subarray(offset, offset += IV_LENGTH);
+  const authTag = encrypted.subarray(offset, offset += AUTH_TAG_LENGTH);
+  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: AUTH_TAG_LENGTH });
+  decipher.setAAD(magic);
+  decipher.setAuthTag(authTag);
+  return Buffer.concat([decipher.update(encrypted.subarray(offset)), decipher.final()]);
 };
 
 const decryptVersioned = (encrypted, secret, magic, scryptOptions) => {
   if (encrypted.length < HEADER_LENGTH) throw new Error("Invalid encrypted vault.");
 
-  let offset = magic.length;
-  const salt = encrypted.subarray(offset, offset += SALT_LENGTH);
-  const iv = encrypted.subarray(offset, offset += IV_LENGTH);
-  const authTag = encrypted.subarray(offset, offset += AUTH_TAG_LENGTH);
-  const ciphertext = encrypted.subarray(offset);
+  const salt = encrypted.subarray(magic.length, magic.length + SALT_LENGTH);
   const secretKey = deriveKey(secret, salt, scryptOptions);
-  const decipher = crypto.createDecipheriv(ALGORITHM, secretKey, iv, {
-    authTagLength: AUTH_TAG_LENGTH
-  });
+  return decryptVersionedWithKey(encrypted, magic, secretKey);
+};
 
-  decipher.setAAD(magic);
-  decipher.setAuthTag(authTag);
-  return Buffer.concat([decipher.update(ciphertext), decipher.final()]);
+const createSessionContext = (encrypted, secret) => {
+  const encryptedBuffer = Buffer.from(encrypted);
+  if (!startsWith(encryptedBuffer, MAGIC_V3) || encryptedBuffer.length < HEADER_LENGTH) {
+    throw new Error("The vault must be migrated before starting a session.");
+  }
+  const salt = encryptedBuffer.subarray(MAGIC_V3.length, MAGIC_V3.length + SALT_LENGTH);
+  return {
+    version: "VLT3",
+    salt: salt.toString("base64"),
+    key: deriveKey(secret, salt, VLT3_SCRYPT_OPTIONS).toString("base64")
+  };
+};
+
+const validateSessionContext = (context) => {
+  if (!context || context.version !== "VLT3") throw new Error("Invalid vault session.");
+  const salt = Buffer.from(context.salt || "", "base64");
+  const key = Buffer.from(context.key || "", "base64");
+  if (salt.length !== SALT_LENGTH || key.length !== KEY_LENGTH) throw new Error("Invalid vault session.");
+  return { salt, key };
+};
+
+const decryptWithSessionContext = (encrypted, context) => {
+  const encryptedBuffer = Buffer.from(encrypted);
+  const { salt, key } = validateSessionContext(context);
+  if (!startsWith(encryptedBuffer, MAGIC_V3) ||
+      !encryptedBuffer.subarray(MAGIC_V3.length, MAGIC_V3.length + SALT_LENGTH).equals(salt)) {
+    throw new Error("The vault changed outside the active session. Lock and unlock it again.");
+  }
+  return decryptVersionedWithKey(encryptedBuffer, MAGIC_V3, key);
+};
+
+const encryptWithSessionContext = (buffer, context) => {
+  const { salt, key } = validateSessionContext(context);
+  return encryptWithKey(buffer, key, salt);
 };
 
 const decryptLegacy = (encrypted, secret) => {
@@ -98,6 +136,9 @@ const decrypt = (encrypted, secret) => {
 module.exports = {
   decrypt,
   encrypt,
+  createSessionContext,
+  decryptWithSessionContext,
+  encryptWithSessionContext,
   isLegacy,
   needsUpgrade
 };

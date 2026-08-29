@@ -5,6 +5,9 @@ const validateSecret = (input) => input !== "" || "Cannot be empty.";
 const validateSecretConfirmation = (secretName) => (input, answers) => {
   const validSecret = validateSecret(input);
   if (validSecret !== true) return validSecret;
+  // Inquirer 12 does not consistently pass accumulated answers to validators.
+  // Command handlers perform the authoritative equality check before writing.
+  if (!answers) return true;
   return input === answers[secretName] || "Passwords do not match.";
 };
 
@@ -63,13 +66,6 @@ module.exports = {
   ],
   add: [
     {
-      type: "password",
-      name: "secret",
-      mask: true,
-      message: "Enter vault password:",
-      validate: validateSecret
-    },
-    {
       name: "userid",
       message: "Enter user ID/email:",
       validate: validateInput,
@@ -87,62 +83,6 @@ module.exports = {
       message: "Notes:",
       filter: trimInput
     }
-  ],
-  update: [
-    {
-      type: "password",
-      name: "secret",
-      mask: true,
-      message: "Enter vault password:",
-      validate: validateSecret
-    },
-    {
-      name: "userid",
-      message: "Enter user ID/email:",
-      validate: validateInput,
-      filter: trimInput
-    },
-    {
-      type: "confirm",
-      name: "updatePassword",
-      "default": false,
-      message: "Update password?"
-    },
-    {
-      type: "password",
-      name: "password",
-      mask: true,
-      message: "Enter password:",
-      validate: validateSecret,
-      when: (response) => response.updatePassword,
-    },
-    {
-      type: "confirm",
-      name: "updateNotes",
-      "default": false,
-      message: "Update notes?"
-    },
-    {
-      name: "notes",
-      message: "Notes:",
-      filter: trimInput,      
-      when: (response) => response.updateNotes,
-    }
-  ],
-  remove: [
-    {
-      type: "password",
-      name: "secret",
-      mask: true,
-      message: "Enter vault password:",
-      validate: validateSecret
-    },
-    {
-      name: "userid",
-      message: "Enter user ID/email:",
-      validate: validateInput,
-      filter: trimInput
-    },
   ],
   default: [
     {

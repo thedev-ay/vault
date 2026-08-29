@@ -29,7 +29,7 @@ const encryptV2 = (buffer, secret) => {
 describe('vault/common', () => {
   test('should throw error if vault is locked', () => {
     jest.spyOn(config, 'getVaultData').mockReturnValue('invalid');
-    expect(() => open('wrongkey')).toThrow('Vault locked!');
+    expect(() => open('wrongkey')).toThrow(expect.objectContaining({ code: 'AUTHENTICATION_FAILED' }));
     jest.restoreAllMocks();
   });
 
@@ -64,7 +64,7 @@ describe('vault/common', () => {
     jest.restoreAllMocks();
   });
 
-  test('should migrate a legacy vault after opening it successfully', () => {
+  test('should leave legacy migration to the explicit repository transaction', () => {
     const key = 'key';
     const vault = { acc: [{ userid: 'u', password: 'p', notes: '' }] };
     const encrypted = encryptLegacy(Buffer.from(JSON.stringify(vault)), key);
@@ -72,8 +72,7 @@ describe('vault/common', () => {
     const setVaultData = jest.spyOn(config, 'setVaultData').mockImplementation(() => {});
 
     expect(open(key)).toEqual(vault);
-    expect(setVaultData).toHaveBeenCalledTimes(1);
-    expect(crypto.isLegacy(Buffer.from(setVaultData.mock.calls[0][0], 'base64'))).toBe(false);
+    expect(setVaultData).not.toHaveBeenCalled();
     jest.restoreAllMocks();
   });
 
@@ -85,8 +84,7 @@ describe('vault/common', () => {
     const setVaultData = jest.spyOn(config, 'setVaultData').mockImplementation(() => {});
 
     expect(open(key)).toEqual(vault);
-    expect(setVaultData).toHaveBeenCalledTimes(1);
-    expect(Buffer.from(setVaultData.mock.calls[0][0], 'base64').subarray(0, 4).toString()).toBe('VLT3');
+    expect(setVaultData).not.toHaveBeenCalled();
     jest.restoreAllMocks();
   });
 
@@ -106,7 +104,7 @@ describe('vault/common', () => {
     jest.spyOn(config, 'getVaultData').mockReturnValue(encrypted.toString('base64'));
     const setVaultData = jest.spyOn(config, 'setVaultData').mockImplementation(() => {});
 
-    expect(() => open(key)).toThrow('Vault locked!');
+    expect(() => open(key)).toThrow(expect.objectContaining({ code: 'VAULT_CORRUPT' }));
     expect(setVaultData).not.toHaveBeenCalled();
     jest.restoreAllMocks();
   });

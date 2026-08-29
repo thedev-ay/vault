@@ -1,6 +1,8 @@
 const crypto = require("../../tools/crypto");
 const config = require("../../tools/config");
 const fs = require("fs");
+const repository = require("../../infrastructure/vault-repository");
+const domain = require("../../domain/vault");
 
 const init = (key, data = {}, isEncrypted = false) => {
   let encryptedData;
@@ -8,7 +10,8 @@ const init = (key, data = {}, isEncrypted = false) => {
   if (isEncrypted) {
     encryptedData = data;
   } else {
-    const encrypted = crypto.encrypt(JSON.stringify(data), key);
+    const vault = Object.keys(data).length === 0 ? domain.empty() : domain.decode(data).vault;
+    const encrypted = crypto.encrypt(JSON.stringify(vault), key);
     encryptedData = encrypted.toString("base64");    
   }
 
@@ -24,7 +27,7 @@ const initWithFile = (key, file) => {
 };
 
 const initConfirm = (encrypted) => {
-  config.setVaultData(encrypted);
+  repository.importEncrypted(encrypted);
 
   console.log("Vault initialized!");
 };

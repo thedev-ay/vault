@@ -8,6 +8,7 @@ const exportVault = require("./download/prompt").exportPrompt;
 const unlock = require("./unlock/prompt").unlockPrompt;
 const lock = require("./lock/index").lock;
 const password = require("./password/prompt").passwordPrompt;
+const copy = require("./copy/prompt").copyPrompt;
 
 module.exports = {
   init,
@@ -19,5 +20,6 @@ module.exports = {
   unlock,
   lock,
   password,
+  copy,
   export: exportVault,
 };

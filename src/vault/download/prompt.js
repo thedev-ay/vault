@@ -1,12 +1,14 @@
 const display = require("../../tools/display");
-const { download } = require("./index");
-const { getUnlockedSecret } = require("../common/prompt");
+const { writeExport } = require("./index");
+const session = require("../../tools/session");
+const { ensureUnlocked } = require("../common/prompt");
 
 module.exports.exportPrompt = async function() {
   try {
-    const secret = await getUnlockedSecret();
+    await ensureUnlocked();
+    const encoded = await session.execute("export");
     display.banner();
-    download(secret);
+    writeExport(Buffer.from(encoded, "base64"));
   } catch (err) {
     display.error(err.message || String(err));
   }

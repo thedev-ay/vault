@@ -68,4 +68,16 @@ describe('tools/crypto', () => {
     expect(crypto.decrypt(encrypted, 'password123').toString()).toBe('compatible');
     expect(crypto.needsUpgrade(encrypted)).toBe(false);
   });
+
+  test('supports session encryption without retaining the master password', () => {
+    const encrypted = crypto.encrypt(Buffer.from('first'), 'master-password');
+    const context = crypto.createSessionContext(encrypted, 'master-password');
+    expect(JSON.stringify(context)).not.toContain('master-password');
+
+    const rewritten = crypto.encryptWithSessionContext(Buffer.from('second'), context);
+    expect(crypto.decryptWithSessionContext(rewritten, context).toString()).toBe('second');
+    expect(crypto.decrypt(rewritten, 'master-password').toString()).toBe('second');
+    expect(rewritten.subarray(4, 20)).toEqual(encrypted.subarray(4, 20));
+    expect(rewritten.subarray(20, 32)).not.toEqual(encrypted.subarray(20, 32));
+  });
 });

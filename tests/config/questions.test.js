@@ -6,8 +6,7 @@ describe('config/questions', () => {
     expect(Array.isArray(questions.init)).toBe(true);
     expect(Array.isArray(questions.changePassword)).toBe(true);
     expect(Array.isArray(questions.add)).toBe(true);
-    expect(Array.isArray(questions.update)).toBe(true);
-    expect(Array.isArray(questions.remove)).toBe(true);
+    expect(Array.isArray(questions.changePassword)).toBe(true);
   });
 
   test('should preserve passwords exactly and confirm the initial vault password', () => {

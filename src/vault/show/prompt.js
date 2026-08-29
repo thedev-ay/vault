@@ -1,17 +1,26 @@
 const display = require("../../tools/display");
-const { show } = require("./index");
-const { getUnlockedSecret } = require("../common/prompt");
+const session = require("../../tools/session");
+const { ensureUnlocked } = require("../common/prompt");
 
 module.exports.showPrompt = async function(account, opts = {}) {
   try {
-    let secret;
-    if (opts.noPrompt && process.env.NODE_ENV === "test") {
-      secret = opts.secret;
+    await ensureUnlocked();
+    const credentials = await session.execute("credentials", {
+      account,
+      reveal: Boolean(opts.reveal)
+    });
+    if (opts.json) {
+      console.log(JSON.stringify(credentials.map((credential) => {
+        if (opts.reveal) return credential;
+        const safe = { ...credential };
+        delete safe.password;
+        return safe;
+      }), null, 2));
     } else {
-      secret = await getUnlockedSecret();
+      display.banner();
+      display.credentials(credentials, { reveal: Boolean(opts.reveal) });
+      if (!opts.reveal) console.log("Passwords are hidden. Use --reveal to display them.");
     }
-    display.banner();
-    show(secret, account);
   } catch (err) {
     display.error(err.message || String(err));
   }

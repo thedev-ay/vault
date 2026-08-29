@@ -1,17 +1,16 @@
 const display = require("../../tools/display");
-const { list } = require("./index");
-const { getUnlockedSecret } = require("../common/prompt");
+const session = require("../../tools/session");
+const { ensureUnlocked } = require("../common/prompt");
 
 module.exports.listPrompt = async function(opts = {}) {
   try {
-    let secret;
-    if (opts.noPrompt && process.env.NODE_ENV === "test") {
-      secret = opts.secret;
-    } else {
-      secret = await getUnlockedSecret();
+    await ensureUnlocked();
+    const accounts = await session.execute("list");
+    if (opts.json) console.log(JSON.stringify(accounts, null, 2));
+    else {
+      display.banner();
+      display.accounts(accounts);
     }
-    display.banner();
-    list(secret);
   } catch (err) {
     display.error(err.message || String(err));
   }

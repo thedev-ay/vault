@@ -1,23 +1,20 @@
 const display = require("../../tools/display");
-const { add } = require("./index");
 const questions = require("../../config/questions");
-const { promptWithUnlockedSecret } = require("../common/prompt");
+const session = require("../../tools/session");
+const { promptWithUnlockedSession } = require("../common/prompt");
 const _add = questions.add;
 
-module.exports.addPrompt = async function(account, opts = {}) {
+module.exports.addPrompt = async function(account) {
   try {
-    let answers;
-    if (opts.noPrompt && process.env.NODE_ENV === "test") {
-      answers = opts;
-    } else {
-      answers = await promptWithUnlockedSecret(_add);
-    }
+    const answers = await promptWithUnlockedSession(_add);
     display.banner();
-    add(answers.secret, account, {
+    await session.execute("add", {
+      account,
       userid: answers.userid,
       password: answers.password,
       notes: answers.notes
     });
+    console.log("Credentials added!");
   } catch (err) {
     display.error(err.message || String(err));
   }

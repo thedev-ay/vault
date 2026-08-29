@@ -5,10 +5,7 @@ const crypto = require("crypto");
 const os = require("os");
 const path = require("path");
 
-const download = (key) => {
-  open(key);
-
-  const buffer = Buffer.from(config.getVaultData(), "base64");
+const writeExport = (buffer) => {
   const vaultDir = fs.mkdtempSync(path.join(os.tmpdir(), "Vault-"));
   const filename = `vault_${crypto.randomUUID()}.vlt.enc`;
   const filePath = path.join(vaultDir, filename);
@@ -24,6 +21,12 @@ const download = (key) => {
   return filePath;
 };
 
+const download = (key) => {
+  open(key);
+  return writeExport(Buffer.from(config.getVaultData(), "base64"));
+};
+
 module.exports = {
   download,
+  writeExport
 };

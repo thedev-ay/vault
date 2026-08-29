@@ -1,21 +1,37 @@
+const inquirer = require("inquirer");
+const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
-const { remove } = require("./index");
-const questions = require("../../config/questions");
-const { promptWithUnlockedSecret } = require("../common/prompt");
-const { open, getAccountCredentials } = require("../common/index");
+const session = require("../../tools/session");
+const { ensureUnlocked } = require("../common/prompt");
 
-module.exports.removePrompt = async function(account, opts = {}) {
+module.exports.removePrompt = async function(account) {
   try {
-    let answers;
-    if (opts.noPrompt && process.env.NODE_ENV === "test") {
-      answers = opts;
-    } else {
-      answers = await promptWithUnlockedSecret(questions.remove, (secret) => {
-        getAccountCredentials(open(secret), account);
-      });
-    }
+    await ensureUnlocked();
+    const credentials = await session.execute("credentials", { account, reveal: false });
+    const answers = await prompt([
+      {
+        type: "list",
+        name: "id",
+        message: "Select credentials to remove:",
+        choices: credentials.map((credential) => ({
+          name: `${credential.userid}${credential.notes ? ` — ${credential.notes}` : ""}`,
+          value: credential.id
+        }))
+      },
+      {
+        type: "confirm",
+        name: "proceed",
+        default: false,
+        message: "Remove these credentials permanently?"
+      }
+    ]);
     display.banner();
-    remove(answers.secret, account, answers.userid);
+    if (!answers.proceed) {
+      console.log("Nothing removed.");
+      return;
+    }
+    await session.execute("remove", { id: answers.id });
+    console.log("Credentials removed!");
   } catch (err) {
     display.error(err.message || String(err));
   }

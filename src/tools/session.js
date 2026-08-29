@@ -10,6 +10,7 @@ const AGENT_ARGUMENT = "--vault-session-agent";
 const DEFAULT_MINUTES = 5;
 const MAX_MINUTES = 30;
 const REQUEST_TIMEOUT_MS = 1000;
+const MAX_REQUEST_BYTES = 1024 * 1024;
 
 const sessionId = () => crypto
   .createHash("sha256")
@@ -63,7 +64,7 @@ const readState = () => {
   }
 };
 
-const request = (action) => new Promise((resolve) => {
+const request = (action, payload) => new Promise((resolve) => {
   const state = readState();
   if (!state || !Number.isFinite(state.expiresAt) || state.expiresAt <= Date.now()) {
     try { cleanUp(); } catch (err) { /* A stale session can safely be ignored. */ }
@@ -84,7 +85,7 @@ const request = (action) => new Promise((resolve) => {
 
   client.setEncoding("utf8");
   client.setTimeout(REQUEST_TIMEOUT_MS);
-  client.on("connect", () => client.write(`${JSON.stringify({ action })}\n`));
+  client.on("connect", () => client.write(`${JSON.stringify({ action, payload })}\n`));
   client.on("data", (chunk) => {
     response += chunk;
     if (!response.includes("\n")) return;
@@ -99,9 +100,19 @@ const request = (action) => new Promise((resolve) => {
   client.on("end", () => finish(undefined));
 });
 
-const getSecret = async () => {
-  const response = await request("get");
-  return response && response.secret;
+const isUnlocked = async () => {
+  const response = await request("status");
+  return Boolean(response && response.ok && response.result && response.result.unlocked);
+};
+
+const execute = async (action, payload) => {
+  const response = await request("execute", { action, payload });
+  if (!response || !response.ok) {
+    const error = new Error(response && response.error ? response.error.message : "The unlock session is unavailable.");
+    if (response && response.error) error.code = response.error.code;
+    throw error;
+  }
+  return response.result;
 };
 
 const stop = async () => {
@@ -121,6 +132,14 @@ const validateMinutes = (value) => {
 const start = async (secret, requestedMinutes) => {
   const minutes = validateMinutes(requestedMinutes);
   await stop();
+  const config = require("./config");
+  const vaultCrypto = require("./crypto");
+  let context;
+  try {
+    context = vaultCrypto.createSessionContext(Buffer.from(config.getVaultData(), "base64"), secret);
+  } finally {
+    secret = undefined;
+  }
 
   return new Promise((resolve, reject) => {
     const child = fork(process.argv[1], [AGENT_ARGUMENT], {
@@ -146,15 +165,15 @@ const start = async (secret, requestedMinutes) => {
       child.unref();
       resolve(message.expiresAt);
     });
-    child.send({ secret, minutes });
+    child.send({ context, minutes });
   });
 };
 
 const isAgentProcess = () => process.argv.includes(AGENT_ARGUMENT);
 
 const runAgent = () => {
-  process.once("message", ({ secret, minutes } = {}) => {
-    if (!secret) process.exit(1);
+  process.once("message", ({ context, minutes } = {}) => {
+    if (!context) process.exit(1);
 
     ensureDirectory();
     const paths = getPaths();
@@ -162,27 +181,49 @@ const runAgent = () => {
     const expiresAt = Date.now() + (minutes * 60 * 1000);
     let shuttingDown = false;
 
+    const router = require("../application/session-router");
     const server = net.createServer((client) => {
       client.setEncoding("utf8");
       let input = "";
+      let processed = false;
       client.on("data", (chunk) => {
+        if (processed) return;
         input += chunk;
+        if (Buffer.byteLength(input, "utf8") > MAX_REQUEST_BYTES) {
+          processed = true;
+          client.end(`${JSON.stringify({ ok: false, error: { message: "Request is too large." } })}\n`);
+          return;
+        }
         if (!input.includes("\n")) return;
+        processed = true;
 
-        let action;
+        let requestMessage;
         try {
-          action = JSON.parse(input.trim()).action;
+          requestMessage = JSON.parse(input.trim());
         } catch (err) {
           client.end(`${JSON.stringify({ error: "Invalid request" })}\n`);
           return;
         }
 
-        if (action === "get" && Date.now() < expiresAt) {
-          client.end(`${JSON.stringify({ secret })}\n`);
-        } else if (action === "lock") {
-          client.end(`${JSON.stringify({ locked: true })}\n`, shutdown);
+        if (requestMessage.action === "status" && Date.now() < expiresAt) {
+          client.end(`${JSON.stringify({ ok: true, result: { unlocked: true, expiresAt } })}\n`);
+        } else if (requestMessage.action === "execute" && Date.now() < expiresAt) {
+          try {
+            const operation = requestMessage.payload || {};
+            const result = router.dispatch(context, operation.action, operation.payload);
+            const response = `${JSON.stringify({ ok: true, result })}\n`;
+            if (operation.action === "password") client.end(response, shutdown);
+            else client.end(response);
+          } catch (err) {
+            client.end(`${JSON.stringify({
+              ok: false,
+              error: { code: err.code || "OPERATION_FAILED", message: err.message || String(err) }
+            })}\n`);
+          }
+        } else if (requestMessage.action === "lock") {
+          client.end(`${JSON.stringify({ ok: true, locked: true })}\n`, shutdown);
         } else {
-          client.end(`${JSON.stringify({ expired: true })}\n`);
+          client.end(`${JSON.stringify({ ok: false, expired: true })}\n`);
         }
       });
     });
@@ -215,7 +256,8 @@ const runAgent = () => {
 
 module.exports = {
   DEFAULT_MINUTES,
-  getSecret,
+  execute,
+  isUnlocked,
   isAgentProcess,
   runAgent,
   start,

@@ -1,40 +1,41 @@
 # VAULT
 
-A secure credentials manager.
+An offline, authenticated-encryption credentials manager for the terminal.
 
-It's free. It's offline. It's encrypted.
+## Security model
 
-## Encryption
+Vault files use the versioned `VLT3` format: scrypt (`N=32768`, `r=8`, `p=3`)
+and AES-256-GCM. The file is authenticated, so an incorrect password and a
+modified ciphertext are rejected. Legacy AES-256-CTR and VLT2 files remain
+importable and are migrated after a successful unlock.
 
-New and updated vaults use a versioned `VLT3` format with scrypt password
-derivation (`N=32768`, `r=8`, `p=3`) and AES-256-GCM authenticated encryption.
-These scrypt parameters are fixed for VLT3 compatibility. A fresh random salt
-and nonce are generated every time the vault is written, and authentication
-detects an incorrect password or modified ciphertext.
+The master password is used in the unlocking process to derive a VLT3 session
+key, then discarded. The private session agent receives the derived key—not the
+master password—and accepts only bounded vault operations over a user-private
+socket. Each rewrite uses a fresh GCM nonce. A new random scrypt salt is created
+when a vault is initialized or its master password changes.
 
-Vaults created by older versions remain readable. After the first successful
-unlock, a legacy AES-256-CTR or earlier VLT2 vault is automatically rewritten in
-the `VLT3` format. Existing backup files are not modified and can still be
-imported.
+The encrypted vault is stored as a private `.vlt` file rather than inside the
+preferences JSON. Writes use a process lock, temporary file, `fsync`, and atomic
+rename. The previous encrypted file is retained as `.vlt.backup`; a legacy
+Configstore value is retained as `.vlt.legacy.bak` when first migrated.
 
-## Development and deployment
+Vault contents use a versioned schema with an immutable ID per credential.
+Account names and user IDs can therefore be changed safely.
 
-### Development
+No password manager can protect an unlocked account from malicious software
+running as the same OS user. Terminal output, clipboard managers, backups, and
+screen sharing remain part of the user's security boundary.
 
-Install the locked dependencies once:
+## Install and develop
 
 ```bash
 npm ci
-```
-
-Run the automated tests and create a production build:
-
-```bash
 npm test
 npm run build
 ```
 
-Run the source CLI directly while developing:
+Run the development vault directly:
 
 ```bash
 node src/index.js init
@@ -43,33 +44,18 @@ node src/index.js list
 node src/index.js lock
 ```
 
-Source execution uses the development vault (`vault-dev`), which is separate
-from the globally installed production vault.
+Source execution uses `vault-dev`; a production build uses `vault-prod`.
 
-### Acceptance
-
-Build and install the CLI into a project-local prefix. This does not replace the
-globally installed `vault` command:
+For isolated packaged acceptance:
 
 ```bash
 npm run build
 npm install --global --prefix "$PWD/.acceptance" .
-```
-
-Create isolated configuration and temporary directories, then export them in
-the terminal used for acceptance testing:
-
-```bash
 mkdir -p .acceptance-data/config .acceptance-data/tmp
-
 export XDG_CONFIG_HOME="$PWD/.acceptance-data/config"
 export TMPDIR="$PWD/.acceptance-data/tmp"
 export TMP="$PWD/.acceptance-data/tmp"
-```
 
-Exercise the packaged CLI:
-
-```bash
 .acceptance/bin/vault init
 .acceptance/bin/vault unlock --minutes 30
 .acceptance/bin/vault add github
@@ -79,19 +65,9 @@ Exercise the packaged CLI:
 .acceptance/bin/vault export
 .acceptance/bin/vault remove github
 .acceptance/bin/vault lock
-```
 
-Clear the acceptance environment variables when finished. Opening a new terminal
-also clears them:
-
-```bash
 unset XDG_CONFIG_HOME TMPDIR TMP
 ```
-
-The acceptance installation and data remain in `.acceptance` and
-`.acceptance-data`; both directories can be deleted after testing.
-
-### Production
 
 Deploy globally only after acceptance succeeds:
 
@@ -99,237 +75,102 @@ Deploy globally only after acceptance succeeds:
 npm run deploy:prod
 ```
 
-This replaces the globally installed `vault` command while retaining its
-existing production vault data. Do not run `deploy:prod` during development or
-acceptance testing.
+See [MIGRATION.md](MIGRATION.md) before upgrading an existing production vault.
 
-## Usage
+## Commands
 
--  [init](#create-the-vault) - Creates vault
--  [unlock](#temporarily-unlock-the-vault) - Starts a timed unlock session
--  [lock](#lock-the-vault) - Ends the current unlock session
--  [password](#change-the-master-password) - Changes the master vault password
--  [add](#add-credentials) - Adds credentials
--  [list](#list-of-accounts) - Lists accounts available
--  [show](#get-credentials) - Gets credentials
--  [export](#export-the-vault) - Downloads all credentials to an encrypted file
--  [remove](#remove-credentials-on-a-specific-account) - Removes credentials from account
--  [update](#update-credentials) - Updates credentials
-
-### Create the vault
-
-Allows creation of vault from scratch or from a vault backup
-
-First-time initialization is allowed while locked. Replacing an existing vault
-requires an active unlock session, which ends after replacement.
-
-#### Show options
-```bash
-$ vault init --help
-
-Options:
-  -f, --file <vlt.enc file>  The vlt.enc file generated after exporting vault
-```
-
-#### Create vault from scratch
-```bash
-$ vault init
-
-Enter vault password: ******
-Confirm vault password: ******
-Vault initialized!
-```
-
-#### Import vault backup
-
-_See [export](#export-the-vault) to create vault backup_
-```bash
-# vault init -f <vault file>
-$ vault init -f /tmp/Vault-a1b2c3/vault_550e8400-e29b-41d4-a716-446655440000.vlt.enc
-
-Vault initialized!
-```
-
-The vault must be unlocked before credentials can be read or changed. Run
-`vault unlock` to start a temporary session.
-
-### Temporarily unlock the vault
-
-The password is kept only in the session agent's memory and is never written to
-disk. The session lasts 5 minutes by default.
+### Initialize or import
 
 ```bash
-$ vault unlock
-
-Enter vault password: ******
-Vault unlocked until 2:45:00 PM.
+vault init
+vault init --file /secure/path/vault_backup.vlt.enc
 ```
 
-Choose a different duration (up to 30 minutes) with `--minutes`:
+New vaults ask for and confirm a master password. Imports ask for the backup's
+password and authenticate its contents before replacing anything. Replacing an
+existing vault requires an active unlock session and confirmation; replacement
+ends that session.
+
+### Unlock and lock
 
 ```bash
-$ vault unlock --minutes 30
+vault unlock
+vault unlock --minutes 30
+vault lock
 ```
 
-While the session is active, `add`, `list`, `show`, `export`, `remove`, and
-`update` can run without asking for the vault password. When the session is
-missing or expired, these commands offer to unlock the vault before continuing:
+Sessions last five minutes by default and at most 30 minutes. A command can
+offer an inline five-minute unlock if no session is active.
 
-```text
-? Vault is locked. Unlock now? Yes
-? Enter vault password: ******
-```
-
-Choosing `No` leaves the vault locked and stops the command.
-
-### Lock the vault
-
-End the session immediately:
+### Add and list
 
 ```bash
-$ vault lock
-
-Vault locked!
+vault add github
+vault list
+vault list --json
 ```
 
-### Change the master password
+`list` prints account names and their credential counts. JSON output contains no
+passwords and is emitted without banners or terminal escape sequences.
 
-The vault must be unlocked before changing its master password. If it is locked,
-the command offers to unlock it first.
+### Show
 
 ```bash
-$ vault password
-
-Enter new vault password: ********
-Confirm new vault password: ********
-Vault password changed. Vault locked!
+vault show
+vault show github
+vault show github --reveal
+vault show github --json
+vault show github --json --reveal
 ```
 
-All vault data is re-encrypted with the new password and the active session is
-ended. Existing backup files still require the password that was active when
-they were created, so create a new export after changing the password.
+Passwords are masked by default. `--reveal` is an explicit disclosure to the
+terminal. JSON also omits the password property unless `--reveal` is supplied.
 
-### Add credentials
+### Copy without printing
 
 ```bash
-# vault add <account>
-$ vault add facebook
-
-Enter user ID/email: thedev.ay
-Enter password: **********
-Notes:
-
-Credentials added!
+vault copy github
+vault copy github --field username
+vault copy github --clear-seconds 60
 ```
 
-### List of accounts 
-_Note: This command won't show credentials!_
-```bash
-$ vault list
+`copy` copies the selected password by default. If an account has multiple
+credentials, it presents a selector. The detached clearing helper removes the
+value only if the clipboard still contains that exact value, so it will not
+erase something copied afterward. Supported environments use `pbcopy` on macOS,
+`clip.exe` on Windows, `wl-copy` on Wayland, or `xclip` on X11. Clipboard
+managers may retain history even after the active clipboard is cleared.
 
-  +----------+
-  | Account  |
-  +----------+
-  | facebook |
-  | netflix  |
-  | twitter  |
-  +----------+
-```
-
-### Get credentials
-
-#### Get credentials for specific account
-```bash
-# vault show [account]
-$ vault show facebook
-
-  +----------+-----------+--------------------+-------+
-  | Account  | UserId    | Password           | Notes |
-  +----------+-----------+--------------------+-------+
-  | facebook | thedev.ay | <plaintext string> |       |
-  +----------+-----------+--------------------+-------+
-```
-
-#### Get all credentials
-```bash
-$ vault show
-
-  +----------+-----------+--------------------+-------+
-  | Account  | UserId    | Password           | Notes |
-  +----------+-----------+--------------------+-------+
-  | facebook | thedev.ay | <plaintext string> |       |
-  | netflix  | thedev.ay | <plaintext string> |       |
-  | github   | thedev.ay | <plaintext string> |       |
-  +----------+-----------+--------------------+-------+
-
-```
-
-### Export the vault
-_Creates an encrypted copy of your vault. See [init](#import-vault-backup) to import vault._
+### Update and remove
 
 ```bash
-$ vault export
-
-Link to file: /tmp/Vault-a1b2c3/vault_550e8400-e29b-41d4-a716-446655440000.vlt.enc
+vault update github
+vault remove github
 ```
 
-### Remove credentials on a specific account
+Both commands select a credential by immutable ID behind the scenes. Update can
+change account, user ID, password, and notes. Remove requires an explicit
+confirmation.
+
+### Export and change password
+
 ```bash
-# Before delete
-$ vault show
-
-  +----------+-----------+--------------------+-------+
-  | Account  | UserId    | Password           | Notes |
-  +----------+-----------+--------------------+-------+
-  | facebook | thedev.ay | <plaintext string> |       |
-  | netflix  | thedev.ay | <plaintext string> |       |
-  | github   | thedev.ay | <plaintext string> |       |
-  +----------+-----------+--------------------+-------+
-
-# vault remove <account>
-$ vault remove facebook
-
-Enter user ID/email: thedev.ay
-
-Credentials removed!
-
-# After delete
-$ vault show
-
-  +----------+-----------+--------------------+-------+
-  | Account  | UserId    | Password           | Notes |
-  +----------+-----------+--------------------+-------+
-  | netflix  | thedev.ay | <plaintext string> |       |
-  | github   | thedev.ay | <plaintext string> |       |
-  +----------+-----------+--------------------+-------+
+vault export
+vault password
 ```
 
-### Update credentials
-_Updates can only be done for password and notes_
-```bash
-# vault update <account>
-$ vault update github
+Exports are encrypted and created in a private temporary directory. Move them
+to durable secure storage because temporary files can be deleted by the OS.
+After a password change, the vault is locked and old exports still require the
+password that encrypted them.
 
-Enter user ID/email: thedev.ay
-Update password? Yes
-Enter password: ***********
-Update notes? Yes
-Notes: Some notes here
+## Recovery
 
-Credentials updated!
-
-# vault show <account>
-$ vault show github
-
-  +----------+-----------+--------------------+-----------------+
-  | Account  | UserId    | Password           | Notes           |
-  +----------+-----------+--------------------+-----------------+
-  | github   | thedev.ay | <plaintext string> | Some notes here |
-  +----------+-----------+--------------------+-----------------+
-```
-
-## Contributing
-Pull requests are welcome.
+The active encrypted file and its backup are beside the Configstore preferences
+file, normally under `~/.config/configstore/`. Never edit encrypted files or the
+preference JSON manually. Prefer importing a known-good encrypted export. See
+[MIGRATION.md](MIGRATION.md) for backup and rollback procedures.
 
 ## License
+
 [MIT](https://choosealicense.com/licenses/mit/)

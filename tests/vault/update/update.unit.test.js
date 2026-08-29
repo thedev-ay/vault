@@ -21,11 +21,10 @@ describe('vault/update', () => {
 
     const encrypted = Buffer.from(config.setVaultData.mock.calls[0][0], 'base64');
     const updated = JSON.parse(crypto.decrypt(encrypted, key).toString());
-    expect(updated.acc[0]).toEqual({
-      userid: 'user1',
-      password: 'new-password',
-      notes: 'new notes'
-    });
+    expect(updated.schemaVersion).toBe(1);
+    expect(updated.credentials[0]).toEqual(expect.objectContaining({
+      account: 'acc', userid: 'user1', password: 'new-password', notes: 'new notes'
+    }));
   });
 
   test('should reject a missing user ID without rewriting the vault', () => {

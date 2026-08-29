@@ -18,7 +18,11 @@ describe("vault/password", () => {
     changePassword(currentSecret, newSecret);
 
     const updated = Buffer.from(setVaultData.mock.calls[0][0], "base64");
-    expect(JSON.parse(crypto.decrypt(updated, newSecret).toString())).toEqual(vault);
+    const decrypted = JSON.parse(crypto.decrypt(updated, newSecret).toString());
+    expect(decrypted.schemaVersion).toBe(1);
+    expect(decrypted.credentials[0]).toEqual(expect.objectContaining({
+      account: "acc", userid: "user", password: " password ", notes: ""
+    }));
     expect(() => crypto.decrypt(updated, currentSecret)).toThrow();
   });
 

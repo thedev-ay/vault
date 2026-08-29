@@ -15,8 +15,8 @@ const banner = () => {
   );
 };
 
-const credentials = (credentials) => {
-  const options = {
+const credentials = (credentials, renderOptions = {}) => {
+  const tableOptions = {
     leftPad: 2,
     columns: [
       { field: "account",  name: chalk.cyan("Account") },
@@ -26,7 +26,11 @@ const credentials = (credentials) => {
     ]
   };
       
-  const table = chalkTable(options, credentials);
+  const rows = credentials.map((credential) => ({
+    ...credential,
+    password: renderOptions.reveal ? credential.password : "••••••••"
+  }));
+  const table = chalkTable(tableOptions, rows);
       
   console.log(table);
 };
@@ -36,6 +40,7 @@ const accounts = (accounts) => {
     leftPad: 2,
     columns: [
       { field: "account",  name: chalk.cyan("Account") },
+      { field: "credentials", name: chalk.cyan("Credentials") },
     ]
   };
       

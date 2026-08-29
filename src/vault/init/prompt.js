@@ -5,18 +5,22 @@ const { init, initWithFile, initConfirm } = require("./index");
 const questions = require("../../config/questions");
 const config = require("../../tools/config");
 const session = require("../../tools/session");
-const { getUnlockedSecret } = require("../common/prompt");
+const { ensureUnlocked } = require("../common/prompt");
+const repository = require("../../infrastructure/vault-repository");
 const _initConfirm = questions.initConfirm;
 
 module.exports.initPrompt = async function(file) {
   try {
-    if (config.getVaultData() && !(await session.getSecret())) await getUnlockedSecret();
+    if (config.getVaultData()) await ensureUnlocked();
 
     let result;
     if (file) {
       result = initWithFile(undefined, file);
+      const { secret } = await prompt(questions.default);
+      repository.parseEncrypted(result.encrypted, secret);
     } else {
-      const { secret } = await prompt(questions.init);
+      const { secret, secretConfirmation } = await prompt(questions.init);
+      if (secret !== secretConfirmation) throw new Error("Passwords do not match.");
       display.banner();
       result = init(secret);
     }

@@ -1,5 +1,5 @@
-const crypto = require("../../tools/crypto");
-const config = require("../../tools/config");
+const domain = require("../../domain/vault");
+const repository = require("../../infrastructure/vault-repository");
 
 const RESERVED_ACCOUNT_NAMES = new Set(["__proto__", "constructor", "prototype"]);
 
@@ -29,24 +29,11 @@ const validateVaultData = (accounts) => {
 };
 
 const open = (key) => {
-  try {
-    const encrypted = Buffer.from(config.getVaultData(), "base64");
-    const decrypted = crypto.decrypt(encrypted, key);
-    const accounts = validateVaultData(JSON.parse(decrypted.toString()));
-
-    if (crypto.needsUpgrade(encrypted)) {
-      const upgraded = crypto.encrypt(Buffer.from(JSON.stringify(accounts)), key);
-      config.setVaultData(upgraded.toString("base64"));
-    }
-
-    return accounts;
-  } catch (err) {
-    throw new Error("Vault locked!");
-  }
+  return domain.toLegacyAccounts(repository.read(key).vault);
 };
 
 const getAccountCredentials = (accounts, query) => {
-  const credentials = accounts[query];
+  const credentials = Object.prototype.hasOwnProperty.call(accounts, query) ? accounts[query] : undefined;
 
   if (!credentials) {
     throw new Error("Account not found!");

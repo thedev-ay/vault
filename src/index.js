@@ -5,13 +5,15 @@ const display = require("./tools/display");
 const config = require("./tools/config");
 const prompt = require("./vault/index");
 const session = require("./tools/session");
+const clipboard = require("./tools/clipboard");
 
 if (session.isAgentProcess()) {
   session.runAgent();
+} else if (clipboard.isClearProcess()) {
+  clipboard.runClearProcess();
 } else {
   config.setBannerColor();
-
-  display.banner();
+  if (!process.argv.includes("--json")) display.banner();
 
 
 
@@ -33,17 +35,35 @@ if (session.isAgentProcess()) {
 
   program
     .command("list")
+    .option("--json", "Print stable machine-readable JSON")
     .description("List accounts available")
-    .action(() => {
-      prompt.list();
+    .action((options) => {
+      prompt.list(options);
     });
 
   program
     .command("show")
     .arguments("[account]")
+    .option("--reveal", "Reveal passwords in output")
+    .option("--json", "Print stable machine-readable JSON")
     .description("Get credentials")
-    .action((account) => {
-      prompt.show(account);
+    .action((account, options) => {
+      prompt.show(account, options);
+    });
+
+  program
+    .command("copy")
+    .arguments("<account>")
+    .option("-f, --field <field>", "Field to copy: password or username", "password")
+    .option("--clear-seconds <seconds>", "Seconds before clearing the unchanged clipboard", "45")
+    .description("Copy a credential field without printing it")
+    .action((account, options) => {
+      const clearSeconds = Number(options.clearSeconds);
+      if (!Number.isInteger(clearSeconds) || clearSeconds < 5 || clearSeconds > 300) {
+        display.error("Clipboard clear time must be a whole number from 5 to 300 seconds.");
+        return;
+      }
+      prompt.copy(account, { field: options.field, clearSeconds });
     });
 
   program
