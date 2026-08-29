@@ -12,11 +12,27 @@ const MAX_MINUTES = 30;
 const REQUEST_TIMEOUT_MS = 1000;
 const MAX_REQUEST_BYTES = 1024 * 1024;
 
-const sessionId = () => crypto
+const normalizeVaultPath = (vaultPath) => {
+  const resolved = path.resolve(vaultPath);
+  return process.platform === "win32" ? resolved.toLowerCase() : resolved;
+};
+
+const createSessionId = (vaultPath, userIdentity) => crypto
   .createHash("sha256")
-  .update(`${packageJson.name}:${process.env.NODE_ENV || "development"}:${process.getuid ? process.getuid() : os.userInfo().username}`)
+  .update([
+    packageJson.name,
+    process.env.NODE_ENV || "development",
+    userIdentity,
+    normalizeVaultPath(vaultPath)
+  ].join(":"))
   .digest("hex")
   .slice(0, 12);
+
+const sessionId = () => {
+  const config = require("./config");
+  const userIdentity = process.getuid ? process.getuid() : os.userInfo().username;
+  return createSessionId(config.getVaultPath(), userIdentity);
+};
 
 const getPaths = () => {
   const id = sessionId();
@@ -256,6 +272,7 @@ const runAgent = () => {
 
 module.exports = {
   DEFAULT_MINUTES,
+  createSessionId,
   execute,
   isUnlocked,
   isAgentProcess,

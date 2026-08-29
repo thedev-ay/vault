@@ -51,6 +51,7 @@ migrates its decrypted schema and encryption version when necessary.
 ## 3. Deploy and migrate production
 
 ```bash
+vault lock
 npm run deploy:prod
 vault unlock
 vault list
@@ -58,6 +59,9 @@ vault show known-account
 vault export
 vault lock
 ```
+
+Lock before deployment so an agent started by the previous session protocol is
+not left running until its normal expiry.
 
 The first successful unlock performs one locked, atomic transaction:
 

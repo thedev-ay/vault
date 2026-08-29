@@ -14,6 +14,8 @@ key, then discarded. The private session agent receives the derived key—not th
 master password—and accepts only bounded vault operations over a user-private
 socket. Each rewrite uses a fresh GCM nonce. A new random scrypt salt is created
 when a vault is initialized or its master password changes.
+Session sockets are scoped to the resolved encrypted vault path, so isolated
+`XDG_CONFIG_HOME` environments cannot accidentally share an unlock session.
 
 The encrypted vault is stored as a private `.vlt` file rather than inside the
 preferences JSON. Writes use a process lock, temporary file, `fsync`, and atomic

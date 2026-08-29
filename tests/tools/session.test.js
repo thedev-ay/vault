@@ -1,6 +1,15 @@
 const session = require("../../src/tools/session");
 
 describe("tools/session", () => {
+  test("isolates sessions by encrypted vault path", () => {
+    const user = "same-user";
+    const first = session.createSessionId("/tmp/vault-one/vault-prod.vlt", user);
+    const second = session.createSessionId("/tmp/vault-two/vault-prod.vlt", user);
+
+    expect(first).not.toBe(second);
+    expect(session.createSessionId("/tmp/vault-one/../vault-one/vault-prod.vlt", user)).toBe(first);
+  });
+
   test("uses a 5 minute default session", () => {
     expect(session.validateMinutes()).toBe(5);
   });
