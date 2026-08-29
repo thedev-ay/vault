@@ -19,8 +19,9 @@ const getUnlockedSecret = async () => {
   return secret;
 };
 
-const promptWithUnlockedSecret = async (questionSet) => {
+const promptWithUnlockedSecret = async (questionSet, beforePrompt) => {
   const unlockedSecret = await getUnlockedSecret();
+  if (beforePrompt) await beforePrompt(unlockedSecret);
   const answers = await prompt(questionSet.filter((question) => question.name !== "secret"));
   return { secret: unlockedSecret, ...answers };
 };

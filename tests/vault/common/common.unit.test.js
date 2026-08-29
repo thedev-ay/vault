@@ -1,4 +1,4 @@
-const { open, getCredentials, getAllCredentials, validateVaultData } = require('../../../src/vault/common');
+const { open, getAccountCredentials, getCredentials, getAllCredentials, validateVaultData } = require('../../../src/vault/common');
 const config = require('../../../src/tools/config');
 const crypto = require('../../../src/tools/crypto');
 const nodeCrypto = require('crypto');
@@ -42,6 +42,16 @@ describe('vault/common', () => {
     const all = getAllCredentials(accounts);
     expect(all.length).toBe(1);
     expect(all[0].account).toBe('acc');
+  });
+
+  test('should decorate display credentials without mutating stored data', () => {
+    const accounts = { acc: [{ userid: 'u', password: 'p', notes: '' }] };
+    const original = JSON.parse(JSON.stringify(accounts));
+
+    expect(getCredentials(accounts, 'acc')[0].account).toBe('acc');
+    expect(getAllCredentials(accounts)[0].account).toBe('acc');
+    expect(accounts).toEqual(original);
+    expect(getAccountCredentials(accounts, 'acc')).toBe(accounts.acc);
   });
 
   test('should open vault with valid data', () => {

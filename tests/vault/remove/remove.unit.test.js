@@ -20,4 +20,14 @@ describe('vault/remove', () => {
     const userId = 'user1';
     expect(() => remove(key, accountName, userId)).not.toThrow();
   });
+
+  test('should reject a missing user ID without rewriting the vault', () => {
+    expect(() => remove('key', 'acc', 'missing')).toThrow('User ID not found!');
+    expect(config.setVaultData).not.toHaveBeenCalled();
+  });
+
+  test('should reject a missing account without rewriting the vault', () => {
+    expect(() => remove('key', 'missing', 'user1')).toThrow('Account not found!');
+    expect(config.setVaultData).not.toHaveBeenCalled();
+  });
 });

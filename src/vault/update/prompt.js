@@ -2,6 +2,7 @@ const display = require("../../tools/display");
 const { update } = require("./index");
 const questions = require("../../config/questions");
 const { promptWithUnlockedSecret } = require("../common/prompt");
+const { open, getAccountCredentials } = require("../common/index");
 
 module.exports.updatePrompt = async function(account, opts = {}) {
   try {
@@ -15,7 +16,9 @@ module.exports.updatePrompt = async function(account, opts = {}) {
         notes: opts.notes
       };
     } else {
-      answers = await promptWithUnlockedSecret(questions.update);
+      answers = await promptWithUnlockedSecret(questions.update, (secret) => {
+        getAccountCredentials(open(secret), account);
+      });
     }
     display.banner();
     update(answers.secret, account, {

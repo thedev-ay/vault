@@ -45,19 +45,21 @@ const open = (key) => {
   }
 };
 
-const getCredentials = (accounts, query) => {
-  let credentials = accounts[query];
+const getAccountCredentials = (accounts, query) => {
+  const credentials = accounts[query];
 
   if (!credentials) {
     throw new Error("Account not found!");
   }
 
-  credentials = credentials.map((credentials) => {
-    credentials.account = query;
-    return credentials;
-  });
-
   return credentials;
+};
+
+const getCredentials = (accounts, query) => {
+  return getAccountCredentials(accounts, query).map((credentials) => ({
+    ...credentials,
+    account: query
+  }));
 };
 
 const getAllCredentials = (accounts) => {
@@ -65,8 +67,10 @@ const getAllCredentials = (accounts) => {
 
   for (const [key, value] of Object.entries(accounts)) {
     value.forEach((credentials) => {
-      credentials.account = key;
-      credentialsList.push(credentials);
+      credentialsList.push({
+        ...credentials,
+        account: key
+      });
     });
   }
   
@@ -75,6 +79,7 @@ const getAllCredentials = (accounts) => {
 
 module.exports = {
   open,
+  getAccountCredentials,
   getCredentials,
   getAllCredentials,
   validateVaultData,

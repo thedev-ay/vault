@@ -1,11 +1,14 @@
 const crypto = require("../../tools/crypto");
 const config = require("../../tools/config");
-const { open, getCredentials } = require("../common/index");
+const { open, getAccountCredentials } = require("../common/index");
 
 const remove = (key, accountName, userId) => {
   const accounts = open(key);
-  const account = getCredentials(accounts, accountName);
-  
+  const account = getAccountCredentials(accounts, accountName);
+  if (!account.some(credentials => credentials.userid === userId)) {
+    throw new Error("User ID not found!");
+  }
+
   const updatedList = filterCredentials(account, userId);
   if (updatedList.length > 0) {
     accounts[accountName] = updatedList;

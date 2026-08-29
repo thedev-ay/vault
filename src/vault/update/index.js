@@ -1,10 +1,10 @@
 const crypto = require("../../tools/crypto");
 const config = require("../../tools/config");
-const { open, getCredentials } = require("../common/index");
+const { open, getAccountCredentials } = require("../common/index");
 
 const update = (key, accountName, credentials) => {
   const accounts = open(key);
-  const account = getCredentials(accounts, accountName);
+  const account = getAccountCredentials(accounts, accountName);
 
   const updatedList = findAndUpdateCredentials(account, credentials);
   
@@ -19,18 +19,25 @@ const update = (key, accountName, credentials) => {
 };
 
 const findAndUpdateCredentials = (account, credentials) => {
-  return account.map(x => {
+  let isFound = false;
+  const updated = account.map(x => {
     if (x.userid === credentials.userid) {
+      isFound = true;
+      const updatedCredentials = { ...x };
       if (credentials.password !== undefined) {
-        x.password = credentials.password;
+        updatedCredentials.password = credentials.password;
       }
-      
+
       if (credentials.notes !== undefined) {
-        x.notes = credentials.notes;
+        updatedCredentials.notes = credentials.notes;
       }
+      return updatedCredentials;
     }
     return x;
   });
+
+  if (!isFound) throw new Error("User ID not found!");
+  return updated;
 };
 
 module.exports = {

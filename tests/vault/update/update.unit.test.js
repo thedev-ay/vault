@@ -1,25 +1,42 @@
-const { show } = require('../../../src/vault/show');
+const { update } = require('../../../src/vault/update');
 const config = require('../../../src/tools/config');
 const crypto = require('../../../src/tools/crypto');
 
-describe('vault/show', () => {
+describe('vault/update', () => {
+  const key = 'key';
+  const vault = { acc: [{ userid: 'user1', password: 'p', notes: '' }] };
+
   beforeEach(() => {
-    const key = 'key';
-    const vault = { acc: [{ userid: 'user1', password: 'p', notes: '' }] };
     const encrypted = crypto.encrypt(Buffer.from(JSON.stringify(vault)), key);
     jest.spyOn(config, 'getVaultData').mockReturnValue(encrypted.toString('base64'));
+    jest.spyOn(config, 'setVaultData').mockImplementation(() => {});
   });
+
   afterEach(() => {
     jest.restoreAllMocks();
   });
 
-  test('should show credentials for account', () => {
-    const key = 'key';
-    const accountName = 'acc';
-    expect(() => show(key, accountName)).not.toThrow();
+  test('should update existing credentials', () => {
+    update(key, 'acc', { userid: 'user1', password: 'new-password', notes: 'new notes' });
+
+    const encrypted = Buffer.from(config.setVaultData.mock.calls[0][0], 'base64');
+    const updated = JSON.parse(crypto.decrypt(encrypted, key).toString());
+    expect(updated.acc[0]).toEqual({
+      userid: 'user1',
+      password: 'new-password',
+      notes: 'new notes'
+    });
   });
-  test('should show all credentials if no account', () => {
-    const key = 'key';
-    expect(() => show(key)).not.toThrow();
+
+  test('should reject a missing user ID without rewriting the vault', () => {
+    expect(() => update(key, 'acc', { userid: 'missing', password: 'new-password' }))
+      .toThrow('User ID not found!');
+    expect(config.setVaultData).not.toHaveBeenCalled();
+  });
+
+  test('should reject a missing account without rewriting the vault', () => {
+    expect(() => update(key, 'missing', { userid: 'user1', password: 'new-password' }))
+      .toThrow('Account not found!');
+    expect(config.setVaultData).not.toHaveBeenCalled();
   });
 });

@@ -27,6 +27,17 @@ describe("vault/common/prompt", () => {
     expect(inquirer.prompt).toHaveBeenCalledWith([{ name: "userid" }]);
   });
 
+  test("runs command validation before asking command-specific questions", async () => {
+    jest.spyOn(session, "getSecret").mockResolvedValue("unlocked-secret");
+    const beforePrompt = jest.fn().mockResolvedValue(undefined);
+    inquirer.prompt.mockResolvedValue({ userid: "person@example.com" });
+
+    await promptWithUnlockedSecret([{ name: "userid" }], beforePrompt);
+
+    expect(beforePrompt).toHaveBeenCalledWith("unlocked-secret");
+    expect(beforePrompt.mock.invocationCallOrder[0]).toBeLessThan(inquirer.prompt.mock.invocationCallOrder[0]);
+  });
+
   test("leaves the command locked when inline unlock is declined", async () => {
     jest.spyOn(session, "getSecret").mockResolvedValue(undefined);
     jest.spyOn(config, "getVaultData").mockReturnValue("encrypted-vault");
