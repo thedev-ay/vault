@@ -16,7 +16,7 @@ module.exports.initPrompt = async function(file) {
     if (file) {
       result = initWithFile(undefined, file);
     } else {
-      const { secret } = await prompt(questions.default);
+      const { secret } = await prompt(questions.init);
       display.banner();
       result = init(secret);
     }

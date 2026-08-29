@@ -84,5 +84,12 @@ if (session.isAgentProcess()) {
       prompt.lock();
     });
 
+  program
+    .command("password")
+    .description("Change the master vault password")
+    .action(() => {
+      prompt.password();
+    });
+
   program.parse(process.argv);
 }

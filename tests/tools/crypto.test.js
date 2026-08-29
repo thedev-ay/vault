@@ -8,6 +8,22 @@ const encryptLegacy = (buffer, secret) => {
   return Buffer.concat([iv, cipher.update(buffer), cipher.final()]);
 };
 
+const createVersionedFixture = (buffer, secret, version, parallelization) => {
+  const magic = Buffer.from(version);
+  const salt = Buffer.alloc(16, 1);
+  const iv = Buffer.alloc(12, 2);
+  const key = nodeCrypto.scryptSync(String(secret), salt, 32, {
+    N: 32768,
+    r: 8,
+    p: parallelization,
+    maxmem: 64 * 1024 * 1024
+  });
+  const cipher = nodeCrypto.createCipheriv('aes-256-gcm', key, iv, { authTagLength: 16 });
+  cipher.setAAD(magic);
+  const ciphertext = Buffer.concat([cipher.update(buffer), cipher.final()]);
+  return Buffer.concat([magic, salt, iv, cipher.getAuthTag(), ciphertext]);
+};
+
 describe('tools/crypto', () => {
   test('encrypt and decrypt should work', () => {
     const text = 'secret';
@@ -19,8 +35,9 @@ describe('tools/crypto', () => {
 
   test('new vaults use the versioned authenticated format', () => {
     const encrypted = crypto.encrypt(Buffer.from('secret'), 'password123');
-    expect(encrypted.subarray(0, 4).toString()).toBe('VLT2');
+    expect(encrypted.subarray(0, 4).toString()).toBe('VLT3');
     expect(crypto.isLegacy(encrypted)).toBe(false);
+    expect(crypto.needsUpgrade(encrypted)).toBe(false);
   });
 
   test('should reject the wrong password', () => {
@@ -38,5 +55,17 @@ describe('tools/crypto', () => {
     const encrypted = encryptLegacy(Buffer.from('legacy secret'), 'password123');
     expect(crypto.isLegacy(encrypted)).toBe(true);
     expect(crypto.decrypt(encrypted, 'password123').toString()).toBe('legacy secret');
+  });
+
+  test('should preserve the fixed VLT2 scrypt profile', () => {
+    const encrypted = createVersionedFixture(Buffer.from('compatible'), 'password123', 'VLT2', 1);
+    expect(crypto.decrypt(encrypted, 'password123').toString()).toBe('compatible');
+    expect(crypto.needsUpgrade(encrypted)).toBe(true);
+  });
+
+  test('should preserve the fixed VLT3 scrypt profile', () => {
+    const encrypted = createVersionedFixture(Buffer.from('compatible'), 'password123', 'VLT3', 3);
+    expect(crypto.decrypt(encrypted, 'password123').toString()).toBe('compatible');
+    expect(crypto.needsUpgrade(encrypted)).toBe(false);
   });
 });

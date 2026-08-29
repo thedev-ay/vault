@@ -1,11 +1,11 @@
-# VLT2 Encryption Migration
+# VLT3 Encryption Migration
 
-This guide transitions a live vault from the legacy AES-256-CTR format to the
-versioned `VLT2` format, which uses scrypt password derivation and AES-256-GCM
-authenticated encryption.
+This guide transitions a live vault from the legacy AES-256-CTR or earlier VLT2
+format to the versioned `VLT3` format, which uses stronger scrypt password
+derivation and AES-256-GCM authenticated encryption.
 
 Keep the pre-migration backup indefinitely. Older versions of VAULT cannot read
-the new `VLT2` format.
+the new `VLT3` format.
 
 ## 1. Back up the live vault
 
@@ -97,12 +97,12 @@ vault unlock
 The first successful unlock:
 
 1. Decrypts the existing AES-256-CTR vault.
-2. Parses the decrypted vault contents as JSON.
-3. Re-encrypts the data in the scrypt and AES-256-GCM `VLT2` format.
+2. Parses and validates the vault structure and credential field types.
+3. Re-encrypts the data in the scrypt and AES-256-GCM `VLT3` format.
 4. Starts the normal timed unlock session.
 
-If the password is incorrect or the legacy vault cannot be parsed, the migration
-does not rewrite the stored vault.
+If the password is incorrect or the older vault cannot be parsed and validated,
+the migration does not rewrite the stored vault.
 
 Verify known data after migration:
 
@@ -113,7 +113,7 @@ vault show <known-account>
 
 Be aware that `show` prints decrypted credentials to the terminal.
 
-## 4. Create a VLT2 backup
+## 4. Create a VLT3 backup
 
 After verifying the migrated live vault, create a new encrypted export:
 
@@ -127,7 +127,7 @@ both this new-format backup and the pre-migration legacy backup.
 
 ## Rollback
 
-The old application cannot read a migrated `VLT2` vault. To roll back:
+The old application cannot read a migrated `VLT3` vault. To roll back:
 
 1. Reinstall the previous application version.
 2. Restore the pre-migration `.vlt.enc` export using `vault init -f`.

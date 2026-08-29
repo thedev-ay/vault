@@ -1,8 +1,11 @@
-const validateInput = (input) => {  
-  if (!input) {
-    console.log("Cannot be empty!!!");
-  }
-  return input !== "";
+const validateInput = (input) => input.trim() !== "" || "Cannot be empty.";
+
+const validateSecret = (input) => input !== "" || "Cannot be empty.";
+
+const validateSecretConfirmation = (secretName) => (input, answers) => {
+  const validSecret = validateSecret(input);
+  if (validSecret !== true) return validSecret;
+  return input === answers[secretName] || "Passwords do not match.";
 };
 
 const trimInput = (input) => {
@@ -10,6 +13,38 @@ const trimInput = (input) => {
 };
 
 module.exports = {
+  init: [
+    {
+      type: "password",
+      name: "secret",
+      mask: true,
+      message: "Enter vault password:",
+      validate: validateSecret
+    },
+    {
+      type: "password",
+      name: "secretConfirmation",
+      mask: true,
+      message: "Confirm vault password:",
+      validate: validateSecretConfirmation("secret")
+    }
+  ],
+  changePassword: [
+    {
+      type: "password",
+      name: "newSecret",
+      mask: true,
+      message: "Enter new vault password:",
+      validate: validateSecret
+    },
+    {
+      type: "password",
+      name: "newSecretConfirmation",
+      mask: true,
+      message: "Confirm new vault password:",
+      validate: validateSecretConfirmation("newSecret")
+    }
+  ],
   unlockConfirm: [
     {
       type: "confirm",
@@ -31,9 +66,8 @@ module.exports = {
       type: "password",
       name: "secret",
       mask: true,
-      message: "Enter vault password [A-a, 0-9, symbols]:",
-      validate: validateInput,
-      filter: trimInput
+      message: "Enter vault password:",
+      validate: validateSecret
     },
     {
       name: "userid",
@@ -46,8 +80,7 @@ module.exports = {
       name: "password",
       mask: true,
       message: "Enter password:",
-      validate: validateInput,
-      filter: trimInput
+      validate: validateSecret
     },
     {
       name: "notes",
@@ -60,9 +93,8 @@ module.exports = {
       type: "password",
       name: "secret",
       mask: true,
-      message: "Enter vault password [A-a, 0-9, symbols]:",
-      validate: validateInput,
-      filter: trimInput
+      message: "Enter vault password:",
+      validate: validateSecret
     },
     {
       name: "userid",
@@ -81,8 +113,7 @@ module.exports = {
       name: "password",
       mask: true,
       message: "Enter password:",
-      validate: validateInput,
-      filter: trimInput,
+      validate: validateSecret,
       when: (response) => response.updatePassword,
     },
     {
@@ -103,9 +134,8 @@ module.exports = {
       type: "password",
       name: "secret",
       mask: true,
-      message: "Enter vault password [A-a, 0-9, symbols]:",
-      validate: validateInput,
-      filter: trimInput
+      message: "Enter vault password:",
+      validate: validateSecret
     },
     {
       name: "userid",
@@ -119,9 +149,8 @@ module.exports = {
       type: "password",
       name: "secret",
       mask: true,
-      message: "Enter vault password [A-a, 0-9, symbols]:",
-      validate: validateInput,
-      filter: trimInput
+      message: "Enter vault password:",
+      validate: validateSecret
     }
   ]
 };

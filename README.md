@@ -6,14 +6,16 @@ It's free. It's offline. It's encrypted.
 
 ## Encryption
 
-New and updated vaults use a versioned `VLT2` format with scrypt password
-derivation and AES-256-GCM authenticated encryption. A fresh random salt and
-nonce are generated every time the vault is written, and authentication detects
-an incorrect password or modified ciphertext.
+New and updated vaults use a versioned `VLT3` format with scrypt password
+derivation (`N=32768`, `r=8`, `p=3`) and AES-256-GCM authenticated encryption.
+These scrypt parameters are fixed for VLT3 compatibility. A fresh random salt
+and nonce are generated every time the vault is written, and authentication
+detects an incorrect password or modified ciphertext.
 
 Vaults created by older versions remain readable. After the first successful
-unlock, a legacy AES-256-CTR vault is automatically rewritten in the `VLT2`
-format. Existing backup files are not modified and can still be imported.
+unlock, a legacy AES-256-CTR or earlier VLT2 vault is automatically rewritten in
+the `VLT3` format. Existing backup files are not modified and can still be
+imported.
 
 ## Development and deployment
 
@@ -106,6 +108,7 @@ acceptance testing.
 -  [init](#create-the-vault) - Creates vault
 -  [unlock](#temporarily-unlock-the-vault) - Starts a timed unlock session
 -  [lock](#lock-the-vault) - Ends the current unlock session
+-  [password](#change-the-master-password) - Changes the master vault password
 -  [add](#add-credentials) - Adds credentials
 -  [list](#list-of-accounts) - Lists accounts available
 -  [show](#get-credentials) - Gets credentials
@@ -132,6 +135,8 @@ Options:
 ```bash
 $ vault init
 
+Enter vault password: ******
+Confirm vault password: ******
 Vault initialized!
 ```
 
@@ -156,7 +161,7 @@ disk. The session lasts 5 minutes by default.
 ```bash
 $ vault unlock
 
-Enter vault password [A-a, 0-9, symbols]: ******
+Enter vault password: ******
 Vault unlocked until 2:45:00 PM.
 ```
 
@@ -172,7 +177,7 @@ missing or expired, these commands offer to unlock the vault before continuing:
 
 ```text
 ? Vault is locked. Unlock now? Yes
-? Enter vault password [A-a, 0-9, symbols]: ******
+? Enter vault password: ******
 ```
 
 Choosing `No` leaves the vault locked and stops the command.
@@ -186,6 +191,23 @@ $ vault lock
 
 Vault locked!
 ```
+
+### Change the master password
+
+The vault must be unlocked before changing its master password. If it is locked,
+the command offers to unlock it first.
+
+```bash
+$ vault password
+
+Enter new vault password: ********
+Confirm new vault password: ********
+Vault password changed. Vault locked!
+```
+
+All vault data is re-encrypted with the new password and the active session is
+ended. Existing backup files still require the password that was active when
+they were created, so create a new export after changing the password.
 
 ### Add credentials
 
