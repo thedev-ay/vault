@@ -45,7 +45,8 @@ const accounts = (accounts) => {
 };
 
 const error = (errMessage) => {
-  console.log(chalk.red(errMessage));
+  console.error(chalk.red(errMessage));
+  process.exitCode = 1;
 };
 
 

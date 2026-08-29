@@ -26,7 +26,6 @@ module.exports.updatePrompt = async function(account, opts = {}) {
       password: answers.password,
       notes: answers.notes
     });
-    if (opts.noPrompt && process.env.NODE_ENV === "test") process.exit(0);
   } catch (err) {
     display.error(err.message || String(err));
   }

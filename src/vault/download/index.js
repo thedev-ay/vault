@@ -1,23 +1,27 @@
 const config = require("../../tools/config");
 const { open } = require("../common/index");
 const fs = require("fs");
+const crypto = require("crypto");
+const os = require("os");
+const path = require("path");
 
 const download = (key) => {
   open(key);
 
-  const buffer = config.getVaultData();
-  const uniqueId = Math.floor(new Date() / 1000);
-  const filename = `vault_${uniqueId}.vlt.enc`;
-  const os = require("os");
-  const vaultDir = `${process.env.TMP || os.tmpdir()}/Vault`;
+  const buffer = Buffer.from(config.getVaultData(), "base64");
+  const vaultDir = fs.mkdtempSync(path.join(os.tmpdir(), "Vault-"));
+  const filename = `vault_${crypto.randomUUID()}.vlt.enc`;
+  const filePath = path.join(vaultDir, filename);
 
-  if (!fs.existsSync(vaultDir)){
-    fs.mkdirSync(vaultDir);
-  }
+  if (process.platform !== "win32") fs.chmodSync(vaultDir, 0o700);
+  fs.writeFileSync(filePath, buffer, {
+    flag: "wx",
+    mode: 0o600
+  });
+  if (process.platform !== "win32") fs.chmodSync(filePath, 0o600);
 
-  fs.writeFileSync(`${vaultDir}/${filename}`, buffer, {encoding: "base64"});
-
-  console.log("Link to file:", `${vaultDir}/${filename}`);
+  console.log("Link to file:", filePath);
+  return filePath;
 };
 
 module.exports = {

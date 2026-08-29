@@ -145,7 +145,7 @@ Vault initialized!
 _See [export](#export-the-vault) to create vault backup_
 ```bash
 # vault init -f <vault file>
-$ vault init -f /tmp/Vault/vault_1234456788.vlt.enc
+$ vault init -f /tmp/Vault-a1b2c3/vault_550e8400-e29b-41d4-a716-446655440000.vlt.enc
 
 Vault initialized!
 ```
@@ -270,7 +270,7 @@ _Creates an encrypted copy of your vault. See [init](#import-vault-backup) to im
 ```bash
 $ vault export
 
-Link to file: /tmp/Vault/vault_1588410242.vlt.enc
+Link to file: /tmp/Vault-a1b2c3/vault_550e8400-e29b-41d4-a716-446655440000.vlt.enc
 ```
 
 ### Remove credentials on a specific account

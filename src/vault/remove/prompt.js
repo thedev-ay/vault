@@ -16,7 +16,6 @@ module.exports.removePrompt = async function(account, opts = {}) {
     }
     display.banner();
     remove(answers.secret, account, answers.userid);
-    if (opts.noPrompt && process.env.NODE_ENV === "test") process.exit(0);
   } catch (err) {
     display.error(err.message || String(err));
   }

@@ -12,7 +12,6 @@ module.exports.showPrompt = async function(account, opts = {}) {
     }
     display.banner();
     show(secret, account);
-    if (opts.noPrompt && process.env.NODE_ENV === "test") process.exit(0);
   } catch (err) {
     display.error(err.message || String(err));
   }

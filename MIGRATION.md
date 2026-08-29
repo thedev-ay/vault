@@ -20,7 +20,7 @@ vault export
 The command prints a path similar to:
 
 ```text
-/tmp/Vault/vault_1234567890.vlt.enc
+/tmp/Vault-a1b2c3/vault_550e8400-e29b-41d4-a716-446655440000.vlt.enc
 ```
 
 Copy that file to a permanent, secure location outside `/tmp` and outside the
@@ -122,8 +122,9 @@ vault export
 vault lock
 ```
 
-Copy the new export from `/tmp/Vault` to a permanent, secure location. Retain
-both this new-format backup and the pre-migration legacy backup.
+Copy the new export from the path printed by `vault export` to a permanent,
+secure location. Retain both this new-format backup and the pre-migration legacy
+backup.
 
 ## Rollback
 
