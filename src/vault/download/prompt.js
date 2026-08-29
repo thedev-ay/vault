@@ -1,12 +1,10 @@
-const inquirer = require("inquirer");
-const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
 const { download } = require("./index");
-const questions = require("../../config/questions");
+const { getUnlockedSecret } = require("../common/prompt");
 
 module.exports.exportPrompt = async function() {
   try {
-    const { secret } = await prompt(questions.default);
+    const secret = await getUnlockedSecret();
     display.banner();
     download(secret);
   } catch (err) {

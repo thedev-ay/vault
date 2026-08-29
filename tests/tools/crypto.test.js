@@ -1,4 +1,12 @@
+const nodeCrypto = require('crypto');
 const crypto = require('../../src/tools/crypto');
+
+const encryptLegacy = (buffer, secret) => {
+  const key = nodeCrypto.createHash('sha256').update(String(secret)).digest('base64').substr(0, 32);
+  const iv = nodeCrypto.randomBytes(16);
+  const cipher = nodeCrypto.createCipheriv('aes-256-ctr', key, iv);
+  return Buffer.concat([iv, cipher.update(buffer), cipher.final()]);
+};
 
 describe('tools/crypto', () => {
   test('encrypt and decrypt should work', () => {
@@ -7,5 +15,28 @@ describe('tools/crypto', () => {
     const encrypted = crypto.encrypt(Buffer.from(text), secret);
     const decrypted = crypto.decrypt(encrypted, secret);
     expect(decrypted.toString()).toBe(text);
+  });
+
+  test('new vaults use the versioned authenticated format', () => {
+    const encrypted = crypto.encrypt(Buffer.from('secret'), 'password123');
+    expect(encrypted.subarray(0, 4).toString()).toBe('VLT2');
+    expect(crypto.isLegacy(encrypted)).toBe(false);
+  });
+
+  test('should reject the wrong password', () => {
+    const encrypted = crypto.encrypt(Buffer.from('secret'), 'correct-password');
+    expect(() => crypto.decrypt(encrypted, 'wrong-password')).toThrow();
+  });
+
+  test('should reject tampered ciphertext', () => {
+    const encrypted = crypto.encrypt(Buffer.from('secret'), 'password123');
+    encrypted[encrypted.length - 1] ^= 1;
+    expect(() => crypto.decrypt(encrypted, 'password123')).toThrow();
+  });
+
+  test('should decrypt legacy vaults', () => {
+    const encrypted = encryptLegacy(Buffer.from('legacy secret'), 'password123');
+    expect(crypto.isLegacy(encrypted)).toBe(true);
+    expect(crypto.decrypt(encrypted, 'password123').toString()).toBe('legacy secret');
   });
 });

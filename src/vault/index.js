@@ -5,6 +5,8 @@ const list = require("./list/prompt").listPrompt;
 const remove = require("./remove/prompt").removePrompt;
 const update = require("./update/prompt").updatePrompt;
 const exportVault = require("./download/prompt").exportPrompt;
+const unlock = require("./unlock/prompt").unlockPrompt;
+const lock = require("./lock/index").lock;
 
 module.exports = {
   init,
@@ -13,5 +15,7 @@ module.exports = {
   list,
   remove,
   update,
+  unlock,
+  lock,
   export: exportVault,
 };

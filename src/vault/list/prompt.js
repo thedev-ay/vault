@@ -1,8 +1,6 @@
-const inquirer = require("inquirer");
-const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
 const { list } = require("./index");
-const questions = require("../../config/questions");
+const { getUnlockedSecret } = require("../common/prompt");
 
 module.exports.listPrompt = async function(opts = {}) {
   try {
@@ -10,7 +8,7 @@ module.exports.listPrompt = async function(opts = {}) {
     if (opts.noPrompt && process.env.NODE_ENV === "test") {
       secret = opts.secret;
     } else {
-      secret = (await prompt(questions.default)).secret;
+      secret = await getUnlockedSecret();
     }
     display.banner();
     list(secret);

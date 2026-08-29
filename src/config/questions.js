@@ -10,6 +10,14 @@ const trimInput = (input) => {
 };
 
 module.exports = {
+  unlockConfirm: [
+    {
+      type: "confirm",
+      name: "proceed",
+      "default": true,
+      message: "Vault is locked. Unlock now?"
+    }
+  ],
   initConfirm: [
     {
       type: "confirm",

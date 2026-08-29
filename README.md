@@ -4,14 +4,108 @@ A secure credentials manager.
 
 It's free. It's offline. It's encrypted.
 
-## Installation
+## Encryption
+
+New and updated vaults use a versioned `VLT2` format with scrypt password
+derivation and AES-256-GCM authenticated encryption. A fresh random salt and
+nonce are generated every time the vault is written, and authentication detects
+an incorrect password or modified ciphertext.
+
+Vaults created by older versions remain readable. After the first successful
+unlock, a legacy AES-256-CTR vault is automatically rewritten in the `VLT2`
+format. Existing backup files are not modified and can still be imported.
+
+## Development and deployment
+
+### Development
+
+Install the locked dependencies once:
+
+```bash
+npm ci
+```
+
+Run the automated tests and create a production build:
+
+```bash
+npm test
+npm run build
+```
+
+Run the source CLI directly while developing:
+
+```bash
+node src/index.js init
+node src/index.js unlock
+node src/index.js list
+node src/index.js lock
+```
+
+Source execution uses the development vault (`vault-dev`), which is separate
+from the globally installed production vault.
+
+### Acceptance
+
+Build and install the CLI into a project-local prefix. This does not replace the
+globally installed `vault` command:
+
+```bash
+npm run build
+npm install --global --prefix "$PWD/.acceptance" .
+```
+
+Create isolated configuration and temporary directories, then export them in
+the terminal used for acceptance testing:
+
+```bash
+mkdir -p .acceptance-data/config .acceptance-data/tmp
+
+export XDG_CONFIG_HOME="$PWD/.acceptance-data/config"
+export TMPDIR="$PWD/.acceptance-data/tmp"
+export TMP="$PWD/.acceptance-data/tmp"
+```
+
+Exercise the packaged CLI:
+
+```bash
+.acceptance/bin/vault init
+.acceptance/bin/vault unlock --minutes 30
+.acceptance/bin/vault add github
+.acceptance/bin/vault list
+.acceptance/bin/vault show github
+.acceptance/bin/vault update github
+.acceptance/bin/vault export
+.acceptance/bin/vault remove github
+.acceptance/bin/vault lock
+```
+
+Clear the acceptance environment variables when finished. Opening a new terminal
+also clears them:
+
+```bash
+unset XDG_CONFIG_HOME TMPDIR TMP
+```
+
+The acceptance installation and data remain in `.acceptance` and
+`.acceptance-data`; both directories can be deleted after testing.
+
+### Production
+
+Deploy globally only after acceptance succeeds:
 
 ```bash
 npm run deploy:prod
 ```
 
+This replaces the globally installed `vault` command while retaining its
+existing production vault data. Do not run `deploy:prod` during development or
+acceptance testing.
+
 ## Usage
+
 -  [init](#create-the-vault) - Creates vault
+-  [unlock](#temporarily-unlock-the-vault) - Starts a timed unlock session
+-  [lock](#lock-the-vault) - Ends the current unlock session
 -  [add](#add-credentials) - Adds credentials
 -  [list](#list-of-accounts) - Lists accounts available
 -  [show](#get-credentials) - Gets credentials
@@ -22,6 +116,9 @@ npm run deploy:prod
 ### Create the vault
 
 Allows creation of vault from scratch or from a vault backup
+
+First-time initialization is allowed while locked. Replacing an existing vault
+requires an active unlock session, which ends after replacement.
 
 #### Show options
 ```bash
@@ -48,13 +145,54 @@ $ vault init -f /tmp/Vault/vault_1234456788.vlt.enc
 Vault initialized!
 ```
 
+The vault must be unlocked before credentials can be read or changed. Run
+`vault unlock` to start a temporary session.
+
+### Temporarily unlock the vault
+
+The password is kept only in the session agent's memory and is never written to
+disk. The session lasts 5 minutes by default.
+
+```bash
+$ vault unlock
+
+Enter vault password [A-a, 0-9, symbols]: ******
+Vault unlocked until 2:45:00 PM.
+```
+
+Choose a different duration (up to 30 minutes) with `--minutes`:
+
+```bash
+$ vault unlock --minutes 30
+```
+
+While the session is active, `add`, `list`, `show`, `export`, `remove`, and
+`update` can run without asking for the vault password. When the session is
+missing or expired, these commands offer to unlock the vault before continuing:
+
+```text
+? Vault is locked. Unlock now? Yes
+? Enter vault password [A-a, 0-9, symbols]: ******
+```
+
+Choosing `No` leaves the vault locked and stops the command.
+
+### Lock the vault
+
+End the session immediately:
+
+```bash
+$ vault lock
+
+Vault locked!
+```
+
 ### Add credentials
 
 ```bash
 # vault add <account>
 $ vault add facebook
 
-Enter vault password [A-a, 0-9, symbols]: ******
 Enter user ID/email: thedev.ay
 Enter password: **********
 Notes:
@@ -129,7 +267,6 @@ $ vault show
 # vault remove <account>
 $ vault remove facebook
 
-Enter vault password [A-a, 0-9, symbols]: ******
 Enter user ID/email: thedev.ay
 
 Credentials removed!
@@ -151,7 +288,6 @@ _Updates can only be done for password and notes_
 # vault update <account>
 $ vault update github
 
-Enter vault password [A-a, 0-9, symbols]: ******
 Enter user ID/email: thedev.ay
 Update password? Yes
 Enter password: ***********

@@ -1,8 +1,7 @@
-const inquirer = require("inquirer");
-const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
 const { add } = require("./index");
 const questions = require("../../config/questions");
+const { promptWithUnlockedSecret } = require("../common/prompt");
 const _add = questions.add;
 
 module.exports.addPrompt = async function(account, opts = {}) {
@@ -11,7 +10,7 @@ module.exports.addPrompt = async function(account, opts = {}) {
     if (opts.noPrompt && process.env.NODE_ENV === "test") {
       answers = opts;
     } else {
-      answers = await prompt(_add);
+      answers = await promptWithUnlockedSecret(_add);
     }
     display.banner();
     add(answers.secret, account, {

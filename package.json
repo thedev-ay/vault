@@ -5,7 +5,8 @@
   "main": "src/index.js",
   "scripts": {
     "test": "jest",
-    "deploy:prod": "eslint \"src/**\" --fix && webpack --mode=production && npm install -g .",
+    "build": "eslint \"src/**\" && webpack --mode=production",
+    "deploy:prod": "npm run build && npm install -g .",
     "deploy:dev": "eslint \"src/**\" --fix && webpack --mode=development && npm install"
   },
   "keywords": [

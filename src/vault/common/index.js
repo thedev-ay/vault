@@ -2,11 +2,17 @@ const crypto = require("../../tools/crypto");
 const config = require("../../tools/config");
 
 const open = (key) => {
-  try {        
-    const decrypted = crypto.decrypt(
-      Buffer.from(config.getVaultData(), "base64"), key);
+  try {
+    const encrypted = Buffer.from(config.getVaultData(), "base64");
+    const decrypted = crypto.decrypt(encrypted, key);
+    const accounts = JSON.parse(decrypted.toString());
 
-    return JSON.parse(decrypted.toString());
+    if (crypto.isLegacy(encrypted)) {
+      const upgraded = crypto.encrypt(Buffer.from(JSON.stringify(accounts)), key);
+      config.setVaultData(upgraded.toString("base64"));
+    }
+
+    return accounts;
   } catch (err) {
     throw new Error("Vault locked!");
   }

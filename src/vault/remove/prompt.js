@@ -1,8 +1,7 @@
-const inquirer = require("inquirer");
-const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
 const { remove } = require("./index");
 const questions = require("../../config/questions");
+const { promptWithUnlockedSecret } = require("../common/prompt");
 
 module.exports.removePrompt = async function(account, opts = {}) {
   try {
@@ -10,7 +9,7 @@ module.exports.removePrompt = async function(account, opts = {}) {
     if (opts.noPrompt && process.env.NODE_ENV === "test") {
       answers = opts;
     } else {
-      answers = await prompt(questions.remove);
+      answers = await promptWithUnlockedSecret(questions.remove);
     }
     display.banner();
     remove(answers.secret, account, answers.userid);

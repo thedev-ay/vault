@@ -1,8 +1,7 @@
-const inquirer = require("inquirer");
-const prompt = inquirer.prompt || (inquirer.default && inquirer.default.prompt);
 const display = require("../../tools/display");
 const { update } = require("./index");
 const questions = require("../../config/questions");
+const { promptWithUnlockedSecret } = require("../common/prompt");
 
 module.exports.updatePrompt = async function(account, opts = {}) {
   try {
@@ -16,7 +15,7 @@ module.exports.updatePrompt = async function(account, opts = {}) {
         notes: opts.notes
       };
     } else {
-      answers = await prompt(questions.update);
+      answers = await promptWithUnlockedSecret(questions.update);
     }
     display.banner();
     update(answers.secret, account, {
