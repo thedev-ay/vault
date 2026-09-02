@@ -1,6 +1,6 @@
 {
   "name": "vault",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "A secure credentials manager",
   "main": "src/index.js",
   "scripts": {
@@ -35,6 +35,15 @@
   },
   "bin": {
     "vault": "./dist/main.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md",
+    "MIGRATION.md"
+  ],
+  "engines": {
+    "node": ">=18"
   },
   "devDependencies": {
     "@babel/core": "^7.9.0",

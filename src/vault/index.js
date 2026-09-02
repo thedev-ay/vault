@@ -9,6 +9,7 @@ const unlock = require("./unlock/prompt").unlockPrompt;
 const lock = require("./lock/index").lock;
 const password = require("./password/prompt").passwordPrompt;
 const copy = require("./copy/prompt").copyPrompt;
+const systemUpdate = require("./system-update/prompt").systemUpdatePrompt;
 
 module.exports = {
   init,
@@ -21,5 +22,6 @@ module.exports = {
   lock,
   password,
   copy,
+  systemUpdate,
   export: exportVault,
 };

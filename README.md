@@ -77,6 +77,11 @@ Deploy globally only after acceptance succeeds:
 npm run deploy:prod
 ```
 
+An installation from a version that predates `system-update` needs this one
+manual deployment to gain the command. It uses the same production vault path;
+no export/import cycle is required. Future stable releases can then be installed
+with `vault system-update`.
+
 See [MIGRATION.md](MIGRATION.md) before upgrading an existing production vault.
 
 ## Commands
@@ -165,6 +170,42 @@ Exports are encrypted and created in a private temporary directory. Move them
 to durable secure storage because temporary files can be deleted by the OS.
 After a password change, the vault is locked and old exports still require the
 password that encrypted them.
+
+### Update the installed application
+
+```bash
+vault system-update --check
+vault system-update
+vault system-update --yes
+```
+
+`system-update` checks the latest stable release from
+`thedev-ay/vault` on GitHub. It will not install the unrelated public npm
+package named `vault`. Before changing the application it:
+
+1. Downloads the version-matched release archive and checksum over HTTPS.
+2. Verifies the archive's SHA-256 digest.
+3. Creates a package of the currently running application for rollback.
+4. Stops the active unlock session.
+5. Installs into the same global prefix from which `vault` was launched.
+6. Restores the previous application automatically if installation fails.
+
+The encrypted `.vlt`, `.backup`, `.legacy.bak`, and exports live outside the
+installed package and are not modified by this command. Non-secret display
+preferences remain in Configstore. The vault is left locked; the next
+`vault unlock` performs any supported atomic data migration required by the new
+release.
+
+Run the command as the same OS user and with the same installation permissions
+used for the original global installation. `--yes` is intended for controlled
+automation; interactive use asks for confirmation.
+
+### Publishing a system update
+
+Update `package.json`, commit the changes, then push a matching stable tag such
+as `v2.1.0`. The release workflow runs tests and the production build, creates
+`vault-system-2.1.0.tgz` and its SHA-256 file, and publishes both to a GitHub
+release. A tag that does not exactly match the package version is rejected.
 
 ## Recovery
 

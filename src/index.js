@@ -6,6 +6,7 @@ const config = require("./tools/config");
 const prompt = require("./vault/index");
 const session = require("./tools/session");
 const clipboard = require("./tools/clipboard");
+const packageJson = require("../package.json");
 
 if (session.isAgentProcess()) {
   session.runAgent();
@@ -14,9 +15,7 @@ if (session.isAgentProcess()) {
 } else {
   config.setBannerColor();
   if (!process.argv.includes("--json")) display.banner();
-
-
-
+  program.version(packageJson.version);
   program
     .command("init")
     .option("-f, --file <vlt.enc file>", "The vlt.enc file generated after exporting vault")
@@ -90,6 +89,15 @@ if (session.isAgentProcess()) {
     });
 
   program
+    .command("system-update")
+    .option("--check", "Check for a newer stable release without installing it")
+    .option("-y, --yes", "Install the verified update without confirmation")
+    .description("Install the latest verified Vault release without changing vault data")
+    .action((options) => {
+      return prompt.systemUpdate(options);
+    });
+
+  program
     .command("unlock")
     .option("-m, --minutes <minutes>", "Session duration in minutes", String(session.DEFAULT_MINUTES))
     .description("Unlock vault for a limited time")
@@ -111,5 +119,5 @@ if (session.isAgentProcess()) {
       prompt.password();
     });
 
-  program.parse(process.argv);
+  program.parseAsync(process.argv).catch((err) => display.error(err.message || String(err)));
 }

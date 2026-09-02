@@ -8,6 +8,12 @@ VLT3.
 Older application versions cannot understand the new decrypted schema. Keep a
 pre-upgrade export until the new version has been fully verified.
 
+Versions installed before `vault system-update` existed require one final
+manual `npm run deploy:prod` from a trusted checkout. That replaces only the
+application package and discovers the existing `vault-prod` data automatically;
+it does not require exporting and re-importing credentials. Once bootstrapped,
+future releases can use `vault system-update`.
+
 ## 1. Create durable backups
 
 Before deploying the new version, use the currently installed application:
