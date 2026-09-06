@@ -3,3 +3,7 @@ node_modules/
 .build/
 .webpack/
 dist/
+
+# Ignore all: build artifacts
+*.tgz
+*.tgz.sha256
